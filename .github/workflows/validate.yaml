@@ -1,0 +1,16 @@
+name: validate
+on:
+  push:
+  pull_request:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Helm lint
+        run: helm lint platform/helm/procureflow -f platform/helm/procureflow/values.yaml
+      - name: Shell syntax
+        run: find scripts migration -name '*.sh' -print0 | xargs -0 -n1 bash -n
+      - name: Node syntax
+        run: find applications -path '*/src/*.js' -print0 | xargs -0 -n1 node --check

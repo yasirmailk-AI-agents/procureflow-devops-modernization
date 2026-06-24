@@ -1,0 +1,163 @@
+global:
+  environment: dev
+  registry: localhost:5001
+  imageTag: 1.0.0
+
+gateway:
+  enabled: true
+  name: procureflow-gateway
+  listenerName: http
+
+networkPolicy:
+  enabled: false
+
+routes:
+  - path: /api/notifications
+    service: notification-worker
+  - path: /api/integration
+    service: integration-runtime
+  - path: /api/approvals
+    service: approval-service
+  - path: /api/suppliers
+    service: supplier-service
+  - path: /api/orders
+    service: order-service
+  - path: /
+    service: procureflow-frontend
+
+services:
+  frontend:
+    enabled: true
+    name: procureflow-frontend
+    replicas: 1
+    port: 8080
+    image:
+      repository: procureflow-frontend
+      tag: ""
+      pullPolicy: IfNotPresent
+    health:
+      readiness: /health
+      liveness: /health
+    metrics:
+      path: /metrics
+    env:
+      ORDER_API_URL: http://order-service
+      SUPPLIER_API_URL: http://supplier-service
+    resources:
+      requests: {cpu: 50m, memory: 64Mi}
+      limits: {cpu: 250m, memory: 256Mi}
+    autoscaling: {enabled: false, minReplicas: 1, maxReplicas: 3, targetCPUUtilizationPercentage: 70}
+    pdb: {enabled: false, minAvailable: 1}
+
+  supplier:
+    enabled: true
+    name: supplier-service
+    replicas: 1
+    port: 8080
+    image:
+      repository: supplier-service
+      tag: ""
+      pullPolicy: IfNotPresent
+    health:
+      readiness: /api/suppliers/health
+      liveness: /api/suppliers/health
+    metrics:
+      path: /metrics
+    env:
+      LOG_LEVEL: info
+    resources:
+      requests: {cpu: 50m, memory: 64Mi}
+      limits: {cpu: 250m, memory: 256Mi}
+    autoscaling: {enabled: false, minReplicas: 1, maxReplicas: 3, targetCPUUtilizationPercentage: 70}
+    pdb: {enabled: false, minAvailable: 1}
+
+  notification:
+    enabled: true
+    name: notification-worker
+    replicas: 1
+    port: 8080
+    image:
+      repository: notification-worker
+      tag: ""
+      pullPolicy: IfNotPresent
+    health:
+      readiness: /api/notifications/health
+      liveness: /api/notifications/health
+    metrics:
+      path: /metrics
+    env:
+      RABBITMQ_URL: amqp://procureflow-rabbitmq
+    resources:
+      requests: {cpu: 50m, memory: 64Mi}
+      limits: {cpu: 250m, memory: 256Mi}
+    autoscaling: {enabled: false, minReplicas: 1, maxReplicas: 3, targetCPUUtilizationPercentage: 70}
+    pdb: {enabled: false, minAvailable: 1}
+
+  order:
+    enabled: true
+    name: order-service
+    replicas: 1
+    port: 8080
+    image:
+      repository: order-service
+      tag: ""
+      pullPolicy: IfNotPresent
+    health:
+      readiness: /actuator/health/readiness
+      liveness: /actuator/health/liveness
+      initialDelaySeconds: 15
+    metrics:
+      path: /actuator/prometheus
+    env:
+      SPRING_PROFILES_ACTIVE: local
+    resources:
+      requests: {cpu: 100m, memory: 192Mi}
+      limits: {cpu: 500m, memory: 512Mi}
+    autoscaling: {enabled: false, minReplicas: 1, maxReplicas: 4, targetCPUUtilizationPercentage: 70}
+    pdb: {enabled: false, minAvailable: 1}
+
+  approval:
+    enabled: true
+    name: approval-service
+    replicas: 1
+    port: 8080
+    image:
+      repository: approval-service
+      tag: ""
+      pullPolicy: IfNotPresent
+    health:
+      readiness: /actuator/health/readiness
+      liveness: /actuator/health/liveness
+      initialDelaySeconds: 15
+    metrics:
+      path: /actuator/prometheus
+    env:
+      SPRING_PROFILES_ACTIVE: local
+    resources:
+      requests: {cpu: 100m, memory: 192Mi}
+      limits: {cpu: 500m, memory: 512Mi}
+    autoscaling: {enabled: false, minReplicas: 1, maxReplicas: 4, targetCPUUtilizationPercentage: 70}
+    pdb: {enabled: false, minAvailable: 1}
+
+  integration:
+    enabled: true
+    name: integration-runtime
+    replicas: 1
+    port: 8080
+    image:
+      repository: integration-runtime
+      tag: ""
+      pullPolicy: IfNotPresent
+    health:
+      readiness: /actuator/health/readiness
+      liveness: /actuator/health/liveness
+      initialDelaySeconds: 15
+    metrics:
+      path: /actuator/prometheus
+    env:
+      SPRING_PROFILES_ACTIVE: local
+    resources:
+      requests: {cpu: 100m, memory: 192Mi}
+      limits: {cpu: 500m, memory: 512Mi}
+    autoscaling: {enabled: false, minReplicas: 1, maxReplicas: 4, targetCPUUtilizationPercentage: 70}
+    pdb: {enabled: false, minAvailable: 1}

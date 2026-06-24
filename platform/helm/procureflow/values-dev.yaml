@@ -1,0 +1,7 @@
+global:
+  environment: dev
+services:
+  frontend:
+    replicas: 1
+  order:
+    replicas: 1

@@ -1,0 +1,21 @@
+- name: Configure local legacy host prerequisites
+  hosts: legacy
+  become: true
+  tasks:
+    - name: Install base packages
+      ansible.builtin.apt:
+        name: [curl, jq, unzip, ca-certificates]
+        state: present
+        update_cache: true
+    - name: Create application directory
+      ansible.builtin.file:
+        path: /opt/procureflow-legacy
+        state: directory
+        owner: "{{ ansible_user_id }}"
+        mode: "0755"
+    - name: Write configuration marker
+      ansible.builtin.copy:
+        dest: /opt/procureflow-legacy/managed-by-ansible.txt
+        content: "ProcureFlow legacy host configuration is managed by Ansible.
+"
+        mode: "0644"

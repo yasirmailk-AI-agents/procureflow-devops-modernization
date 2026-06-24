@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: procureflow-dev
+  labels:
+    app.kubernetes.io/part-of: procureflow
+    environment: dev
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: procureflow-staging
+  labels:
+    app.kubernetes.io/part-of: procureflow
+    environment: staging
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: procureflow-prod
+  labels:
+    app.kubernetes.io/part-of: procureflow
+    environment: prod

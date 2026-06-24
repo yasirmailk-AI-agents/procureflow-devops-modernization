@@ -1,0 +1,13 @@
+ProcureFlow project generation validation
+
+Passed checks:
+- 17 Bash scripts passed `bash -n` syntax validation.
+- All Node.js source and test files passed `node --check`.
+- 26 non-templated YAML/Compose files passed PyYAML parsing.
+- All three Maven pom.xml files passed XML parsing.
+- All package.json files passed JSON parsing.
+- Shell and migration scripts have executable permissions.
+
+Environment limitation:
+- Helm is not installed in the artifact-generation container, so Helm lint/render must be run in the user's WSL environment using `make lint` and `make render`.
+- Container images and Maven/npm dependencies were not downloaded in this environment.

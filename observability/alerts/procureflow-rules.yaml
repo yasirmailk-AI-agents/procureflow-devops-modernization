@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: procureflow-alerts
+  namespace: monitoring
+spec:
+  groups:
+    - name: procureflow.rules
+      rules:
+        - alert: ProcureFlowPodRestarting
+          expr: increase(kube_pod_container_status_restarts_total{namespace="procureflow-dev"}[10m]) > 2
+          for: 5m
+          labels: {severity: warning}
+          annotations:
+            summary: ProcureFlow Pod is repeatedly restarting
+        - alert: ProcureFlowDeploymentUnavailable
+          expr: kube_deployment_status_replicas_unavailable{namespace="procureflow-dev"} > 0
+          for: 5m
+          labels: {severity: critical}
+          annotations:
+            summary: ProcureFlow deployment has unavailable replicas

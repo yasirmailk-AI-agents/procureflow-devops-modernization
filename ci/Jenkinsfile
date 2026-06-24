@@ -1,0 +1,49 @@
+pipeline {
+  agent any
+  environment {
+    REGISTRY = 'localhost:5001'
+    IMAGE_TAG = "${BUILD_NUMBER}"
+  }
+  stages {
+    stage('Checkout') { steps { checkout scm } }
+    stage('Node Tests') {
+      parallel {
+        stage('Frontend') { steps { dir('applications/frontend-nodejs') { sh 'npm install && npm test' } } }
+        stage('Supplier') { steps { dir('applications/supplier-service-nodejs') { sh 'npm install && npm test' } } }
+        stage('Notification') { steps { dir('applications/notification-worker-nodejs') { sh 'npm install && npm test' } } }
+      }
+    }
+    stage('Java Tests') {
+      parallel {
+        stage('Order') { steps { dir('applications/order-service-java') { sh 'mvn -B test' } } }
+        stage('Approval') { steps { dir('applications/approval-service-java') { sh 'mvn -B test' } } }
+        stage('Integration') { steps { dir('applications/integration-runtime-java') { sh 'mvn -B test' } } }
+      }
+    }
+    stage('Helm Validation') {
+      steps {
+        sh 'helm lint platform/helm/procureflow -f platform/helm/procureflow/values.yaml'
+        sh 'helm template procureflow platform/helm/procureflow --namespace procureflow-dev -f platform/helm/procureflow/values.yaml > rendered.yaml'
+      }
+    }
+    stage('Build Images') { steps { sh 'IMAGE_TAG=${BUILD_NUMBER} ./scripts/40-build-push.sh' } }
+    stage('Security Scan') {
+      steps {
+        sh '''#!/usr/bin/env bash
+          set -Eeuo pipefail
+          if command -v trivy >/dev/null; then
+            for image in procureflow-frontend supplier-service notification-worker order-service approval-service integration-runtime; do
+              trivy image --exit-code 1 --severity CRITICAL,HIGH "${REGISTRY}/${image}:${IMAGE_TAG}"
+            done
+          else
+            echo "Trivy is not installed on the Jenkins agent; scan stage skipped."
+          fi
+        '''
+      }
+    }
+    stage('GitOps Handoff') {
+      steps { echo 'Update the GitOps repository image tag here. Argo CD performs deployment; Jenkins does not run kubectl apply.' }
+    }
+  }
+  post { always { archiveArtifacts artifacts: 'rendered.yaml', allowEmptyArchive: true } }
+}

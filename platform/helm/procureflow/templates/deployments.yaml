@@ -1,0 +1,81 @@
+{{- range $key, $svc := .Values.services }}
+{{- if $svc.enabled }}
+{{- $port := $svc.port | default 8080 }}
+{{- $tag := $svc.image.tag | default $.Values.global.imageTag }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $svc.name }}
+  labels:
+    {{- include "procureflow.labels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $svc.name }}
+spec:
+  replicas: {{ $svc.replicas | default 1 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $svc.name }}
+      app.kubernetes.io/instance: {{ $.Release.Name }}
+  template:
+    metadata:
+      labels:
+        {{- include "procureflow.labels" $ | nindent 8 }}
+        app.kubernetes.io/name: {{ $svc.name }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: {{ $svc.metrics.path | default "/metrics" | quote }}
+        prometheus.io/port: {{ $port | quote }}
+    spec:
+      serviceAccountName: {{ $svc.name }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: {{ $svc.name }}
+          image: "{{ $.Values.global.registry }}/{{ $svc.image.repository }}:{{ $tag }}"
+          imagePullPolicy: {{ $svc.image.pullPolicy | default "IfNotPresent" }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: http
+              containerPort: {{ $port }}
+              protocol: TCP
+          env:
+            - name: SERVICE_NAME
+              value: {{ $svc.name | quote }}
+            - name: ENVIRONMENT
+              value: {{ $.Values.global.environment | quote }}
+            {{- range $name, $value := $svc.env }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: {{ $svc.health.readiness | quote }}
+              port: http
+            initialDelaySeconds: {{ $svc.health.initialDelaySeconds | default 5 }}
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 12
+          livenessProbe:
+            httpGet:
+              path: {{ $svc.health.liveness | quote }}
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml $svc.resources | nindent 12 }}
+{{- end }}
+{{- end }}

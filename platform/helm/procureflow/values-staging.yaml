@@ -1,0 +1,8 @@
+global:
+  environment: staging
+services:
+  frontend:
+    replicas: 2
+  order:
+    replicas: 2
+    pdb: {enabled: true, minAvailable: 1}
